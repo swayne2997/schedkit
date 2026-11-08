@@ -1,0 +1,23 @@
+# 本地配置：含邮箱授权码与模型 API Key，永远不要提交
+config.json
+
+# 本地安全规则（给 AI 助手看，仅存本机）
+AGENTS.md
+
+# 运行时数据：邮件数据库与内置浏览器缓存
+data/*
+!data/cncolor.json
+
+# Python 缓存与虚拟环境
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 编辑器
+.vscode/
+.idea/
+
+# 系统文件
+Thumbs.db
+desktop.ini

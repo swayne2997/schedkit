@@ -1,0 +1,43 @@
+{
+  "window": {
+    "width": 1100,
+    "height": 720,
+    "x": null,
+    "y": null,
+    "maximized": false
+  },
+  "theme": "paper",
+  "view": "week",
+  "poll_minutes": 10,
+  "sync_minutes": 30,
+  "reminders": [
+    {
+      "id": "r-default-1",
+      "kind": "days_before",
+      "days": 1,
+      "time": "18:00",
+      "enabled": true
+    },
+    {
+      "id": "r-default-2",
+      "kind": "minutes_before",
+      "minutes": 120,
+      "enabled": true
+    }
+  ],
+  "mail": {
+    "host": "imap.163.com",
+    "port": 993,
+    "user": "",
+    "auth_code": "",
+    "folder": "INBOX",
+    "sync_mode": "days",
+    "initial_days": 7
+  },
+  "ai": {
+    "base_url": "",
+    "api_key": "",
+    "model": "",
+    "temperature": 0
+  }
+}
