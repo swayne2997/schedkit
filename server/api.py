@@ -1,6 +1,7 @@
 """本地 HTTP 服务：静态界面 + 事件接口 + SSE 推送。只监听 127.0.0.1。"""
 from __future__ import annotations
 
+import copy
 import json
 import mimetypes
 import queue
@@ -46,6 +47,36 @@ EVENT_ID = re.compile(r"^/api/events/([A-Za-z0-9_-]+)$")
 PENDING_ID = re.compile(r"^/api/pending/([A-Za-z0-9_-]+)/(accept|skip)$")
 
 CNCOLOR_DATA = ROOT / "data" / "cncolor.json"
+
+INDEX_FILE = ROOT / "index.html"
+UI_DIR = ROOT / "ui"
+MASK = "****"
+SECRET_FIELDS = (("mail", "auth_code"), ("ai", "api_key"))
+
+
+def _mask(value: str) -> str:
+    return MASK + value[-4:] if len(value) > 4 else MASK
+
+
+def _public_config(cfg: dict) -> dict:
+    """对外返回的配置：凭证只给掩码，界面与截图里不再出现明文。"""
+    out = copy.deepcopy(cfg)
+    for section, key in SECRET_FIELDS:
+        value = (out.get(section) or {}).get(key) or ""
+        if value:
+            out[section][key] = _mask(value)
+    return out
+
+
+def _clean_patch(patch: dict) -> dict:
+    """前端原样回传掩码时，保留磁盘上的真实凭证。"""
+    out = copy.deepcopy(patch)
+    for section, key in SECRET_FIELDS:
+        sub = out.get(section)
+        if isinstance(sub, dict) and str(sub.get(key) or "").startswith(MASK):
+            sub.pop(key, None)
+    return out
+
 
 _cncolor_lock = threading.Lock()
 _cncolor_cache: dict | None = None
@@ -180,7 +211,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"events": items})
             return
         if path == "/api/config":
-            self._json(200, {"config": config.load()})
+            self._json(200, {"config": _public_config(config.load())})
             return
         if path == "/api/meta":
             self._json(200, self._meta())
@@ -283,7 +314,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"event": item})
             return
         if path == "/api/config":
-            self._json(200, {"config": config.update(self._body())})
+            cfg = config.update(_clean_patch(self._body()))
+            self._json(200, {"config": _public_config(cfg)})
             return
         self._json(404, {"error": "接口不存在"})
 
@@ -331,7 +363,12 @@ class Handler(BaseHTTPRequestHandler):
     def _static(self, path: str) -> None:
         rel = "index.html" if path in ("", "/") else path.lstrip("/")
         target = (ROOT / rel).resolve()
-        if not str(target).startswith(str(ROOT)) or not target.is_file():
+        # 只对外提供界面资源，config.json、数据目录等其他文件一律不暴露
+        if target == INDEX_FILE.resolve():
+            allowed = True
+        else:
+            allowed = UI_DIR.resolve() in target.parents
+        if not allowed or not target.is_file():
             self.send_response(404)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.end_headers()
